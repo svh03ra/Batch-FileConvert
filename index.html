@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Generator on CMD</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.0/styles/default.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.0/highlight.min.js"></script>
+    <script>hljs.highlightAll();</script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 15px;
+        }
+        .version {
+            font-size: 14px;
+            color: gray;
+        }
+        button {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            cursor: pointer;
+            padding: 10px 15px;
+            font-size: 14px;
+            border-radius: 4px;
+        }
+        button:hover {
+            background-color: #218838;
+        }
+        .code-box {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 15px;
+        }
+        textarea {
+            width: 100%;
+            height: 200px;
+            font-family: monospace;
+            background: #1e1e1e;
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            border: none;
+            resize: none;
+        }
+        .copy-container {
+            display: flex;
+            justify-content: center; /* Center the buttons */
+            margin-top: 5px;
+            gap: 20px; /* Add space between the buttons */
+        }
+        .clear-btn {
+            background-color: red;
+            color: white;
+            border: none;
+            cursor: pointer;
+            padding: 10px 15px;
+            font-size: 14px;
+            border-radius: 4px;
+        }
+        .clear-btn:hover {
+            background-color: darkred;
+        }
+        input, select {
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+        .description {
+            margin-bottom: 20px;
+            font-size: 16px;
+            color: #333;
+        }
+        .warning {
+            color: red;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h2>File Generator on CMD</h2>
+        <span class="version">Version 1.0</span>
+        <button onclick="generateBatchFile()">Download Script</button>
+    </div>
+
+    <div class="description">
+        <p>This tool allows you to quickly generate a CMD/Batch script (.bat file) that can be run from the command prompt. It helps automate writing lines to a file.</p>
+        <p>This tool makes it easier to use for generating files (e.g. temporary files, setup scripts, etc).</p>
+        <p>Please scroll down if you want to see the advanced options!</p>
+        <p class="warning">Warning: The generated batch script has limitations. If the input contains excessive symbols or garbage data, or if you add extra spaces, the generated result may fail.</p>
+        <p class="warning">!!! Use at your own risk !!!</p>
+    </div>
+
+    <label>Input file:</label>
+    <input type="file" id="input-file" accept=".txt" onchange="loadFile()">
+
+    <label>Based Format:</label>
+    <select id="based-format" onchange="updatePreview()">
+        <option value="ascii">ASCII</option>
+        <option value="hex">Hex</option>
+    </select>
+
+    <label>Format Options:</label>
+    <select id="format-options" onchange="updatePreview()">
+        <option value="default">Default</option>
+        <option value="single">Single</option>
+    </select>
+
+    <label>Spacing Options:</label>
+    <select id="spacing-options" onchange="updatePreview()">
+        <option value="default">Default</option>
+        <option value="without-space">Without Space</option>
+    </select>
+
+    <h3>Code Preview</h3>
+    <div class="code-box">
+        <textarea id="code-preview" readonly>@echo off</textarea>
+        <div class="copy-container">
+            <button onclick="copyToClipboard()">Copy Text</button> <!-- Updated Copy Button -->
+            <button class="clear-btn" onclick="clearCodePreview()">&#10006; Clear</button> <!-- Red X Button -->
+        </div>
+    </div>
+
+    <label>Location:</label>
+    <input type="text" id="location" value="C:\users\%username%\desktop" oninput="updatePreview()">
+    
+    <label>File Name:</label>
+    <input type="text" id="filename" value="output.txt" oninput="updatePreview()">
+
+    <script>
+        let fileLines = [];
+
+        function logDebug(message, type = 'INFO') {
+            const logMessage = `[DEBUG]: [${type}] ${message}`;
+            console.log(logMessage);
+        }
+
+        function loadFile() {
+            const file = document.getElementById("input-file").files[0];
+            if (!file) {
+                logDebug("No file selected.", "ERROR");
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                logDebug("File loaded successfully.");
+                fileLines = event.target.result.split("\n").map(line => line.trim()).filter(line => line);
+                logDebug(`Loaded ${fileLines.length} lines from file.`);
+                updatePreview(); // Update preview after file is loaded
+            };
+
+            reader.onerror = function() {
+                logDebug("Error reading file.", "ERROR");
+            };
+
+            logDebug("Starting file reading...");
+            reader.readAsText(file);
+        }
+
+        function convertToHex(str) {
+            return str.split('').map(char => char.charCodeAt(0).toString(16).padStart(2, '0').toUpperCase()).join(' ');
+        }
+
+        function updatePreview() {
+            if (fileLines.length === 0) {
+                logDebug("No lines available to display in preview.", "WARNING");
+                return; // If no file is loaded, do nothing
+            }
+
+            logDebug("Updating preview...");
+            const location = document.getElementById("location").value;
+            const filename = document.getElementById("filename").value;
+            const basedFormat = document.getElementById("based-format").value;
+            const formatOptions = document.getElementById("format-options").value;
+            const spacingOptions = document.getElementById("spacing-options").value;
+
+            let preview = "@echo off\n";
+            let allLines = "";
+            fileLines.forEach((line, index) => {
+                let formattedLine = line;
+
+                if (basedFormat === "hex") {
+                    logDebug(`Converting line to hex: ${line}`);
+                    formattedLine = convertToHex(line);
+                }
+
+                if (spacingOptions === "without-space") {
+                    logDebug(`Removing spaces from line: ${formattedLine}`);
+                    formattedLine = formattedLine.replace(/\s+/g, '');
+                }
+
+                if (formatOptions === "single") {
+                    allLines += spacingOptions === "without-space" ? formattedLine : formattedLine + " ";
+                } else {
+                    preview += index === 0 ? `echo ${formattedLine} > ${location}\\${filename}\n` : `echo ${formattedLine} >> ${location}\\${filename}\n`;
+                }
+            });
+
+            if (formatOptions === "single") {
+                preview += `echo ${allLines.trim()} > ${location}\\${filename}\n`;
+            }
+
+            document.getElementById("code-preview").value = preview;
+            logDebug("Preview updated.");
+        }
+
+        function generateBatchFile() {
+            const content = document.getElementById("code-preview").value;
+
+            logDebug("Generating batch file...");
+
+            const blob = new Blob([content], { type: "text/plain" });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = "script.bat";
+            link.click();
+
+            logDebug("Batch file generated and download initiated.");
+        }
+
+        function copyToClipboard() {
+            const codePreview = document.getElementById("code-preview");
+            codePreview.select();
+            document.execCommand("copy");
+            alert("Copied to clipboard!");
+            logDebug("Text copied to clipboard.");
+        }
+
+        function clearCodePreview() {
+            logDebug("Clearing code preview...");
+            document.getElementById("code-preview").value = ''; // Clears the code preview text
+            // Reset the fileLines array to allow re-import of the same file
+            fileLines = [];
+            logDebug("File lines reset. Ready to re-import a new file.");
+        }
+
+        // Add debugging for reimporting the same file after clearing
+        document.getElementById('input-file').addEventListener('change', function() {
+            if (fileLines.length === 0) {
+                logDebug("Attempting to reimport the same file after clearing.", "ERROR");
+                logDebug("Re-importing a cleared file will not work unless a new file is selected.", "WARNING");
+            } else {
+                logDebug("File re-imported successfully after clear.");
+            }
+        });
+    </script>
+</body>
+</html>
